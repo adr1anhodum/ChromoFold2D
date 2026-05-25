@@ -1,18 +1,18 @@
 # Chromofold 2D — Fluorescent Protein Property Prediction
 
-Predict emission wavelength (nm) and brightness of fluorescent proteins from sequence and chromophore data.  
-Two models are compared using k-fold cross-validation to ensure reproducible, dataset-size-robust evaluation.
+This tool predicts emission wavelength and brightness of fluorescent proteins from sequence and chromophore data.  
+Two encoding methods are utilized (ESM-2 and T-scale). Encoded data is fed into a Multi-Layer Perceptron (MLP). Training is done using k-fold cross-validation to ensure reproducibility of evaluation. 
 
 ---
 
-## Models
+## Encoding
 
 | Model | Protein embedding | Dim |
 |---|---|---|
 | ESM-2 | `esm2_t33_650M_UR50D` mean-pool (Facebook Research) | 1280 |
-| T-scales | T-scales physicochemical descriptors + custom BERT | 256 |
+| T-scale | T-scale physicochemical descriptors + custom BERT | 256 |
 
-Both models concatenate their protein embedding with a **ChemBERTa SMILES embedding** (768-d) and two scalar features (Stokes shift, molecular weight) before being fed into a configurable MLP predicting emission wavelength and brightness jointly.
+Both models concatenate their protein embedding with a **ChemBERTa SMILES embedding** (768-d) and two scalar features (Stokes shift, molecular weight) before being fed into a configurable MLP.
 
 ---
 
@@ -26,19 +26,20 @@ source .venv/bin/activate   # Windows: .venv\Scripts\activate
 pip install -e .
 ```
 
-Apple Silicon (CPU-forced for stability) and NVIDIA CUDA are both supported.
+Either Apple Silicon (CPU-forced for stability) or NVIDIA CUDA are supported.
 
 ---
 
 ## Usage
 
-### K-fold cross-validation (main evaluation)
+### Training with k-fold cross-validation (main evaluation)
 
 ```bash
-# Default: 5 folds × 10 independent runs (~30–60 min on CPU)
 python main.py
+```
+This may take up to 30 min. A quicker sanity test may be done as follows:
 
-# Quick smoke-test (~5 min)
+```bash
 python main.py --n_folds 3 --n_runs 2
 ```
 
@@ -46,20 +47,20 @@ python main.py --n_folds 3 --n_runs 2
 
 | File | Description |
 |---|---|
-| `results/kfold_results.json` | Per-fold, per-run, per-architecture RMSE |
+| `results/kfold_results.json` | RMSE per-fold, per-run, per-architecture |
 | `results/oof_predictions.csv` | Per-protein OOF predictions, true values, and absolute errors |
-| `figures/kfold_consistency.png` | Per-fold RMSE bar chart (mean ± std across runs) |
+| `figures/kfold_consistency.png` | Per-fold RMSE bar chart (mean ± standard deviation across runs) |
 | `figures/kfold_arch_heatmap.png` | Mean RMSE heatmap over all architectures |
-| `figures/kfold_model_comparison.png` | Violin + box: ESM-2 vs T-scales distribution |
+| `figures/kfold_model_comparison.png` | Violin + box plot: ESM-2 vs T-scales distribution |
 | `figures/kfold_pred_wavelength.png` | OOF predicted vs actual emission wavelength (nm), 1×2 |
 | `figures/kfold_pred_vs_actual.png` | OOF predicted vs actual for both targets, 2×2 |
-| `figures/kfold_esm_targets.png` | ESM-2 predicted vs actual — wavelength and brightness, 1×2 |
-| `figures/kfold_tsc_targets.png` | T-scales + BERT predicted vs actual — wavelength and brightness, 1×2 |
-| `figures/kfold_protein_errors.png` | Per-protein view — emission wavelength for both models, annotated |
-| `figures/kfold_protein_errors_esm.png` | Per-protein view — ESM-2 wavelength and brightness, annotated |
-| `figures/kfold_protein_errors_tsc.png` | Per-protein view — T-scales wavelength and brightness, annotated |
-| `figures/kfold_protein_errors_grid.png` | Per-protein 2×2 grid — both models and both targets |
-| `figures/kfold_protein_errors_brightness.png` | Per-protein view — brightness for both models, annotated |
+| `figures/kfold_esm_targets.png` | ESM-2 predicted vs actual (wavelength and brightness), 1×2 |
+| `figures/kfold_tsc_targets.png` | T-scales + BERT predicted vs actual  (wavelength and brightness), 1×2 |
+| `figures/kfold_protein_errors.png` | Per-protein view (emission wavelength for both models, annotated) |
+| `figures/kfold_protein_errors_esm.png` | Per-protein view (ESM-2 wavelength and brightness, annotated) |
+| `figures/kfold_protein_errors_tsc.png` | Per-protein view (T-scales wavelength and brightness, annotated) |
+| `figures/kfold_protein_errors_grid.png` | Per-protein 2×2 grid (both models and both targets) |
+| `figures/kfold_protein_errors_brightness.png` | Per-protein view (brightness for both models, annotated) |
 
 ### Web interface (Streamlit)
 
@@ -67,14 +68,14 @@ python main.py --n_folds 3 --n_runs 2
 streamlit run app.py
 ```
 
-Opens at http://localhost:8501. Run `python main.py` first to populate the K-Fold Results tab.  
-On first launch a quick demo model trains automatically (~2 min on CPU).
+Will open web interface at http://localhost:8501. Beforehand, `python main.py` must be run to populate the K-Fold Results tab.  
+On first launch a quick demo model will train automatically (~1 min on CPU).
 
 **Features**
-- Input a protein sequence and chromophore → get emission wavelength + brightness prediction
-- Switch between ESM-2 and T-scales models
-- View k-fold result figures generated by the main pipeline
-
+- Input a protein sequence and chromophore code. Get emission wavelength and brightness prediction
+- Select ESM-2 or T-scales model
+- View k-fold result figures generated by main pipeline
+**Warning:** Only the following chromophores are supported: NRQ, CRQ, NRP, CH6, CRO, 5SQ, 4M9, CR2, OFM, CR8, CFY, OIM, CH7, GYS, WCR, DYG, FAD, PIA, BLR, CRF, NYG, FMN, B2H, SWG, CSH, BJF, GYC, CCY, CR7.
 ---
 
 ## Project Structure
@@ -122,11 +123,11 @@ The input CSV must contain:
 
 | Column | Description |
 |---|---|
-| `Protein sequence` | Amino acid sequence (single-letter) |
-| `Chromophore/ligand` | Name (e.g. GFP, RFP) or SMILES string |
-| `Stokes shift` | Excitation − emission peak difference (nm) |
+| `Protein sequence` | Amino acid sequence (in single-letter code) |
+| `Chromophore/ligand` | Name (e.g. CR2) |
+| `Stokes shift` | Excitation − emission peak difference  |
 | `kDa` | Approximate molecular weight |
-| `Emission wavelength` | Target: peak emission (nm) |
+| `Emission wavelength` | Target: peak emission  |
 | `Brightness` | Target: relative brightness |
 
 CSV path is set by `CSV_PATH` in `src/protein_predictor/config.py`.
@@ -135,7 +136,7 @@ CSV path is set by `CSV_PATH` in `src/protein_predictor/config.py`.
 
 ## Configuration
 
-All tunable parameters live in `src/protein_predictor/config.py`:
+All tunable parameters can be found in `src/protein_predictor/config.py`:
 
 ```python
 TEST_FRAC      = 0.20   # held-out test fraction (unused in k-fold; all data is folded)
@@ -157,36 +158,6 @@ FIG_DPI        = 300    # figure export resolution
 
 ---
 
-## Figures for Results & Discussion
-
-| Figure | What it shows | Key talking point |
-|---|---|---|
-| `kfold_consistency.png` | Per-fold RMSE (mean ± std across runs), individual run points overlaid | Low std across runs → model is not highly sensitive to random initialisation; consistent fold-to-fold performance → no single fold dominates |
-| `kfold_arch_heatmap.png` | Mean RMSE for every (n_layers × n_neurons) architecture, averaged across all runs and folds | Shallow networks (1–2 layers, 32–64 neurons) outperform deeper ones on ~100 samples — a classic sign of overfitting with increasing model capacity |
-| `kfold_model_comparison.png` | Violin + box comparing full RMSE distributions of ESM-2 vs T-scales + BERT | Compare median and IQR; relate embedding dimensionality (1280 vs 256) to observed performance gap |
-| `kfold_pred_wavelength.png` | 1×2 OOF scatter: predicted vs actual emission wavelength (nm), color-coded by spectral class | Wavelength-only view for clean comparison; outliers at rare wavelengths show where training data is sparse |
-| `kfold_pred_vs_actual.png` | 2×2 OOF scatter: predicted vs actual for both targets in **original units** (nm, brightness) | Core result figure — RMSE in nm and R² per model × target |
-| `kfold_esm_targets.png` | 1×2 OOF: ESM-2 predicted vs actual — emission wavelength and brightness | Per-model view showing both targets side by side |
-| `kfold_tsc_targets.png` | 1×2 OOF: T-scales predicted vs actual — emission wavelength and brightness | Direct counterpart to the ESM-2 figure |
-| `kfold_protein_errors.png` | 1×2 per-protein scatter — emission wavelength for both models, best/worst labelled | Identifies which proteins are consistently hard to predict |
-| `kfold_protein_errors_esm.png` | 1×2 per-protein: ESM-2 wavelength and brightness, annotated | Shows whether a protein is an outlier in both targets or just one |
-| `kfold_protein_errors_tsc.png` | 1×2 per-protein: T-scales wavelength and brightness, annotated | Same as above for T-scales |
-| `kfold_protein_errors_grid.png` | 2×2 per-protein: both models × both targets, annotated | Full comparison in one figure |
-| `kfold_protein_errors_brightness.png` | 1×2 per-protein: brightness for both models, annotated | Brightness-only view; compare with wavelength figures to diagnose target-specific failures |
-
 ---
 
-## Troubleshooting
 
-| Problem | Fix |
-|---|---|
-| `ModuleNotFoundError: protein_predictor` | Run `pip install -e .` from the project root |
-| Out of memory | Lower `BATCH_SIZE` in config.py (try 32) |
-| Stale embeddings cache | Delete `data/embeddings_cache.pkl` — it will be recomputed |
-| Streamlit port in use | `streamlit run app.py --server.port 8502` |
-
----
-
-## License
-
-MIT
