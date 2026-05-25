@@ -1,0 +1,31 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.so
+*.egg
+*.egg-info/
+dist/
+build/
+.eggs/
+
+# Virtual environments
+.venv/
+venv/
+env/
+
+# macOS
+.DS_Store
+
+# Generated data
+data/embeddings_cache.pkl
+
+# PyTorch / training artifacts
+checkpoints/
+lightning_logs/
+
+# IDE / tooling
+.claude/
+.vscode/
+.idea/
